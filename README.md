@@ -125,6 +125,13 @@ Please check out common DSC Resources [contributing guidelines](https://github.c
 * **LoadBalancingAlgorithm**: Specifies the load balancing algorithm for the network team. { Dynamic | HyperVPort | IPAddresses | MacAddresses | TransportPorts }.
 * **Ensure**: Specifies if the network team should be created or deleted. { Present | Absent }.
 
+### xNetworkAdapterName
+* **PhysicalMediaType**: Specifies physical media type of the adapter you want to affect.  Defaults to `802.3`.
+* **Status**: Specifies the status of the adapter you want to affect.  Defaults to `Up`.
+* **Name**: Specifies the Name the adapter should use.
+* **IgnoreMultipleMatchingAdapters**: Specifies that if multiple adapters are found.  The resource should not treat this as an error and affect only the first one.
+* **MatchingAdapterCount**: Only returned when the resource is retrieved.  Indicates the number of adapters matching the specified criteria.
+
 ## Known Invalid Configurations
 
 ### xFirewall
@@ -142,6 +149,9 @@ The cmdlet does not fully support the Inquire action for debug messages. Cmdlet 
 ## Versions
 
 ### Unreleased
+* Added the following resources:
+    * MSFT_xNetworkAdapterName resource to set adapter names
+
 
 ### 2.7.0.0
 
@@ -716,4 +726,32 @@ configuration Sample_xRoute_AddRoute
 
 Sample_xRoute_AddRoute
 Start-DscConfiguration -Path Sample_xRoute_AddRoute -Wait -Verbose -Force
+```
+### Rename the first up ethernet adapter
+This example will rename the first up ethernet adapter
+
+```powershell
+configuration Sample_xNetworkAdapterName
+{
+    param
+    (
+        [string[]]$NodeName = 'localhost'
+    )
+
+    Import-DSCResource -ModuleName xNetworking
+
+    Node $NodeName
+    {
+        xNetworkAdapterName adapter
+        {
+            Name                           = 'MyEthernet' #key
+            PhysicalMediaType              = '802.3'      #query
+            Status                         = 'Up'         #query
+            IgnoreMultipleMatchingAdapters = $true        #option
+        }
+    }
+ }
+
+Sample_xNetworkAdapterName
+Start-DscConfiguration -Path Sample_xNetworkAdapterName -Wait -Verbose -Force
 ```
