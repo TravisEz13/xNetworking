@@ -45,7 +45,7 @@ function Get-TargetResource
         $($LocalizedData.GettingNetAdapetrMessage)
         ) -join '')
 
-    Test-ResourceProperty @PSBoundParameters
+    Test-ResourceProperty -PhysicalMediaType $PhysicalMediaType -Status $Status -Name $Name
     
     $Adapter  =  @(Get-NetAdapter | Where-Object {$_.PhysicalMediaType -eq $PhysicalMediaType -and $_.Status -eq $Status})
     $exactAdapter = @($Adapter | Where-Object {$_.Name -eq $Name} )
@@ -61,7 +61,6 @@ function Get-TargetResource
             PhysicalMediaType    = $PhysicalMediaType
             Status               = $Status
             Name                 = $exactAdapter[0].Name
-            InterfaceAlias       = $InterfaceAlias
             MatchingAdapterCount = $Adapter.Count
         }
     }
@@ -71,7 +70,6 @@ function Get-TargetResource
             PhysicalMediaType    = $PhysicalMediaType
             Status               = $Status
             Name                 = $null
-            InterfaceAlias       = $InterfaceAlias
             MatchingAdapterCount = 0
         }
     }
@@ -106,6 +104,8 @@ function Set-TargetResource
     Write-Verbose -Message ( @( "$($MyInvocation.MyCommand): "
         $($LocalizedData.ApplyingNetAdapterMessage)
         ) -join '')
+    
+    Test-ResourceProperty -PhysicalMediaType $PhysicalMediaType -Status $Status -Name $Name
 
     # Get the current NetAdapter based on the parameters given.
     $getResults = Get-TargetResource @PSBoundParameters
@@ -178,7 +178,7 @@ function Test-TargetResource
         $($LocalizedData.CheckingNetAdapterMessage)
         ) -join '')
 
-    Test-ResourceProperty @PSBoundParameters
+    Test-ResourceProperty -PhysicalMediaType $PhysicalMediaType -Status $Status -Name $Name
 
     # Get the current NetAdapter based on the parameters given.
     $getResults = Get-TargetResource @PSBoundParameters
