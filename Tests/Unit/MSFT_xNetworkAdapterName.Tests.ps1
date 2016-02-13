@@ -28,28 +28,23 @@ try
         # Create the Mock Objects that will be used for running tests
         $MockNetAdapter = [PSCustomObject] @{
             Name                    = 'Ethernet'
-            PhysicalMediaType              = '802.3'
-            Status                         = 'Up'
+            MacAddress              = '00-0D-3A-60-8C-C9'
         }
         
         $MockMultipleNetAdapter = @(
             [PSCustomObject] @{
                 Name                    = 'Ethernet1'
-                PhysicalMediaType              = '802.3'
-                Status                         = 'Up'
+                MacAddress              = '00-0D-3A-60-8C-C9'
             },
             [PSCustomObject] @{
                 Name                    = 'MyEthernet'
-                PhysicalMediaType              = '802.3'
-                Status                         = 'Up'
+                MacAddress              = '00-0D-3A-60-8C-D9'
             }
         )
 
         $TestAdapterKeys = @{
             Name                           = 'MyEthernet'
-            PhysicalMediaType              = '802.3'
-            Status                         = 'Up'
-            IgnoreMultipleMatchingAdapters = $true
+            MacAddress              = '00-0D-3A-60-8C-C9'
         } 
   
         Describe "$($Global:DSCResourceName)\Get-TargetResource" {
@@ -58,9 +53,8 @@ try
                 
                 Mock Get-NetAdapter
     
-                It 'should return absent Route' {
+                It 'should return absent adapter' {
                     $Result = Get-TargetResource @TestAdapterKeys
-                    $Result.MatchingAdapterCount | Should Be 0
                     $Result.Name | Should Be $null
                 }
                 It 'should call the expected mocks' {
@@ -74,7 +68,6 @@ try
     
                 It 'should return correct Route' {
                     $Result = Get-TargetResource @TestAdapterKeys
-                    $Result.MatchingAdapterCount | Should Be 1
                     $Result.Name | Should Be 'Ethernet'
                 }
                 It 'should call the expected mocks' {
@@ -88,8 +81,7 @@ try
                 It 'should return correct Route' {
                     $Result = Get-TargetResource `
                         @TestAdapterKeys
-                    $Result.MatchingAdapterCount | Should Be 2
-                    $Result.Name | Should Be 'MyEthernet'
+                    $Result.Name | Should Be 'Ethernet1'
                 }
                 It 'should call the expected mocks' {
                     Assert-MockCalled -commandName Get-NetAdapter -Exactly 1
@@ -107,6 +99,7 @@ try
                 It 'should not throw error' {
                     { 
                         $Splat = $TestAdapterKeys.Clone()
+                        $Splat.MacAddress = 'FF-0D-3A-60-8C-C9'
                         Set-TargetResource @Splat
                     } | Should Throw 'A NetAdapter matching the properties was not found. Please correct the properties and try again.'
                 }
@@ -132,7 +125,7 @@ try
                     Assert-MockCalled -commandName Rename-NetAdapter -Exactly 1
                 }
             }
-            Context 'Multiple matching adapter exists and IgnoreMultipleMatchingAdapters is true and name matches' {
+            Context 'Multiple matching adapter exists name matches' {
                 
                 Mock Get-NetAdapter -MockWith { $MockMultipleNetAdapter }
                 Mock Rename-NetAdapter
@@ -140,6 +133,7 @@ try
                 It 'should not throw error' {
                     { 
                         $Splat = $TestAdapterKeys.Clone()
+                        $Splat.Name = 'Ethernet1'
                         Set-TargetResource @Splat
                     } | Should Not Throw
                 }
@@ -148,7 +142,7 @@ try
                     Assert-MockCalled -commandName Rename-NetAdapter -Exactly 0
                 }
             }
-            Context 'Multiple matching adapter exists and IgnoreMultipleMatchingAdapters is true and name mismatches' {
+            Context 'Multiple matching adapter exists and name mismatches' {
                 
                 Mock Get-NetAdapter -MockWith { $MockMultipleNetAdapter }
                 Mock Rename-NetAdapter
@@ -165,23 +159,7 @@ try
                     Assert-MockCalled -commandName Rename-NetAdapter -Exactly 1
                 }
             }
-            Context 'Multiple matching adapter exists and IgnoreMultipleMatchingAdapters is false' {
-                
-                Mock Get-NetAdapter -MockWith { $MockMultipleNetAdapter }
-                Mock Rename-NetAdapter
-    
-                It 'should not throw error' {
-                    { 
-                        $Splat = $TestAdapterKeys.Clone()
-                        $Splat.IgnoreMultipleMatchingAdapters = $false
-                        Set-TargetResource @Splat
-                    } | Should Throw 'Multiple matching NetAdapters where found for the properties. Please correct the properties or specify IgnoreMultipleMatchingAdapters to only use the first and try again.'                    
-                }
-                It 'should call expected Mocks' {
-                    Assert-MockCalled -commandName Get-NetAdapter -Exactly 1
-                    Assert-MockCalled -commandName Rename-NetAdapter -Exactly 0
-                }
-            }        }
+        }
     
         Describe "$($Global:DSCResourceName)\Test-TargetResource" {
 

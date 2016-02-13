@@ -14,7 +14,8 @@ NetAdapterSetStateMessage=NetAdapter was set to the desired state.
 CheckingNetAdapterMessage=Checking the NetAdapter.
 NetAdapterNotFoundError=A NetAdapter matching the properties was not found. Please correct the properties and try again.
 MultipleMatchingNetAdapterFound=Multiple matching NetAdapters where found for the properties. Please correct the properties or specify IgnoreMultipleMatchingAdapters to only use the first and try again.
-ApplyingWhileInDesiredStateMessage=
+ApplyingWhileInDesiredStateMessage=The NetAdapter is already named correctly.
+InvalidMacAddressFormat=The MAC address must be specified in the format HH-HH-HH-HH-HH-HH.  Example: 00-0D-3A-60-8C-C9.
 '@
 }
 
@@ -27,50 +28,40 @@ function Get-TargetResource
     [OutputType([System.Collections.Hashtable])]
     param
     (
+        [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [String]$PhysicalMediaType = '802.3',
-
-        [ValidateNotNullOrEmpty()]
-        [ValidateSet('Up','Disconnected','Disabled')]
-        [String]$Status = 'Up',
+        [String]$MacAddress,
 
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [String]$Name,
-        
-        [Bool] $IgnoreMultipleMatchingAdapters
+        [String]$Name
     )
 
     Write-Verbose -Message ( @("$($MyInvocation.MyCommand): "
         $($LocalizedData.GettingNetAdapetrMessage)
         ) -join '')
 
-    Test-ResourceProperty -PhysicalMediaType $PhysicalMediaType -Status $Status -Name $Name
+    Test-ResourceProperty -MacAddress $MacAddress -Name $Name
     
-    $Adapter  =  @(Get-NetAdapter | Where-Object {$_.PhysicalMediaType -eq $PhysicalMediaType -and $_.Status -eq $Status})
-    $exactAdapter = @($Adapter | Where-Object {$_.Name -eq $Name} )
-    if($exactAdapter.Count -eq 0)
-    {
-        $exactAdapter = $Adapter
-    }
+    $Adapter  =  @(Get-NetAdapter | Where-Object {$_.MacAddress -eq $MacAddress})
     
     
-    if($Adapter.Count -gt 0)
+    if($Adapter.Count -eq 1)
     {
         $returnValue = @{
-            PhysicalMediaType    = $PhysicalMediaType
-            Status               = $Status
-            Name                 = $exactAdapter[0].Name
-            MatchingAdapterCount = $Adapter.Count
+            MacAddress    = $MacAddress
+            Name          = $Adapter[0].Name
         }
+    }
+    elseif($Adapter.Count -gt 1)
+    {
+        throw "Unexpected error, more than one adapter with the specified mac adrress."
     }
     else
     {
         $returnValue = @{
-            PhysicalMediaType    = $PhysicalMediaType
-            Status               = $Status
-            Name                 = $null
-            MatchingAdapterCount = 0
+            MacAddress    = $MacAddress
+            Name          = $null
         }
     }
 
@@ -86,26 +77,20 @@ function Set-TargetResource
 {
     param
     (
+        [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [String]$PhysicalMediaType = '802.3',
-
-        [ValidateNotNullOrEmpty()]
-        [ValidateSet('Up','Disconnected','Disabled')]
-        [String]$Status = 'Up',
-
+        [String]$MacAddress,
 
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [String]$Name,
-        
-        [Bool] $IgnoreMultipleMatchingAdapters
+        [String]$Name
     )
     
     Write-Verbose -Message ( @( "$($MyInvocation.MyCommand): "
         $($LocalizedData.ApplyingNetAdapterMessage)
         ) -join '')
     
-    Test-ResourceProperty -PhysicalMediaType $PhysicalMediaType -Status $Status -Name $Name
+    Test-ResourceProperty -MacAddress $MacAddress -Name $Name
 
     # Get the current NetAdapter based on the parameters given.
     $getResults = Get-TargetResource @PSBoundParameters
@@ -116,18 +101,6 @@ function Set-TargetResource
         $errorId = 'NetAdapterNotFound'
         $errorCategory = [System.Management.Automation.ErrorCategory]::InvalidArgument
         $errorMessage = $LocalizedData.NetAdapterNotFoundError
-        $exception = New-Object -TypeName System.InvalidOperationException `
-            -ArgumentList $errorMessage
-        $errorRecord = New-Object -TypeName System.Management.Automation.ErrorRecord `
-            -ArgumentList $exception, $errorId, $errorCategory, $null
-
-        $PSCmdlet.ThrowTerminatingError($errorRecord)        
-    }
-    elseif($getResults.MatchingAdapterCount -ne 1 -and !$IgnoreMultipleMatchingAdapters) # Test if a found adapter name mismatches, if so return false
-    {
-        $errorId = 'MultipleMatchingNetAdapterFound'
-        $errorCategory = [System.Management.Automation.ErrorCategory]::InvalidArgument
-        $errorMessage = $LocalizedData.MultipleMatchingNetAdapterFound
         $exception = New-Object -TypeName System.InvalidOperationException `
             -ArgumentList $errorMessage
         $errorRecord = New-Object -TypeName System.Management.Automation.ErrorRecord `
@@ -158,18 +131,13 @@ function Test-TargetResource
     [OutputType([System.Boolean])]
     param
     (
+        [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [String]$PhysicalMediaType = '802.3',
-
-        [ValidateNotNullOrEmpty()]
-        [ValidateSet('Up','Disconnected','Disabled')]
-        [String]$Status = 'Up',
+        [String]$MacAddress,
 
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [String]$Name,
-        
-        [Bool] $IgnoreMultipleMatchingAdapters
+        [String]$Name
     )
     # Flag to signal whether settings are correct
     [Boolean] $desiredConfigurationMatch = $true
@@ -178,7 +146,7 @@ function Test-TargetResource
         $($LocalizedData.CheckingNetAdapterMessage)
         ) -join '')
 
-    Test-ResourceProperty -PhysicalMediaType $PhysicalMediaType -Status $Status -Name $Name
+    Test-ResourceProperty -MacAddress $MacAddress -Name $Name
 
     # Get the current NetAdapter based on the parameters given.
     $getResults = Get-TargetResource @PSBoundParameters
@@ -209,21 +177,25 @@ function Test-ResourceProperty {
     (
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [String]$PhysicalMediaType,
+        [String]$MacAddress,
 
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [ValidateSet('Up','Disconnected','Disabled')]
-        [String]$Status,
-
-        [Parameter(Mandatory)]
-        [ValidateNotNullOrEmpty()]
-        [String]$Name,
-        
-        [Bool] $IgnoreMultipleMatchingAdapters
+        [String]$Name
     )
     
-    # TODO add any parameter validation
+    if($MacAddress -notmatch '^([0-9A-Fa-f]{2}[-]){5}([0-9A-Fa-f]{2})$')
+    {
+        $errorId = 'InvalidArgument'
+        $errorCategory = [System.Management.Automation.ErrorCategory]::InvalidArgument
+        $errorMessage = $LocalizedData.InvalidMacAddressFormat
+        $exception = New-Object -TypeName System.InvalidOperationException `
+            -ArgumentList $errorMessage
+        $errorRecord = New-Object -TypeName System.Management.Automation.ErrorRecord `
+            -ArgumentList $exception, $errorId, $errorCategory, $null
+
+        $PSCmdlet.ThrowTerminatingError($errorRecord)               
+    }
 
 } # Test-ResourceProperty
 #######################################################################################
