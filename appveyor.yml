@@ -3,7 +3,7 @@
 #---------------------------------#
 version: 3.1.{build}.0
 install:
-    - git clone https://github.com/PlagueHO/DscResource.Tests
+    - git clone --branch dev-plagueho https://github.com/TravisEz13/DscResource.Tests
 
     - ps: |
         $moduleName = 'xNetworking'
